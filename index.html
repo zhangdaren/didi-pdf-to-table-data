@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<link rel="stylesheet" href="css/bootstrap.min.css">
+		<link rel="stylesheet" href="css/style.css">
+	</head>
+	<body>
+		<div id="app">
+			<label for="file" class="uploader flex" v-show="isDragging">
+				<input type="file" class="input-file" accept="application/pdf" multiple>
+				<div>将pdf文件在此处留下即可~</div>
+			</label>
+
+			<div class="whole">
+				<h2 class="text-center title">滴滴行程单pdf生成报销表格数据 v1.0</h2>
+				<form class="form-horizontal" role="form">
+					<div class="form-group">
+						<label for="firstname" class="col-sm-2 control-label">姓名</label>
+						<div class="col-sm-10">
+							<input type="text" class="form-control" placeholder="请输入姓名" v-model="name" @change="updateCopyTxt">
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="lastname" class="col-sm-2 control-label">岗位</label>
+						<div class="col-sm-10">
+							<input type="text" class="form-control" placeholder="请输入岗位" v-model="post" @change="updateCopyTxt">
+						</div>
+					</div>
+				</form>
+
+				<div class="table-box">
+					<div class="flex">
+						{{pdfData.tip1}}　　　　　{{pdfData.tip2}}
+					</div>
+					<div class="flex">
+						{{pdfData.tip3}}　　{{pdfData.tip4}}
+					</div>
+					<table cellpadding="0" cellspacing="0" class="table table-striped">
+						<thead>
+							<th>序号</th>
+							<th>姓名</th>
+							<th>岗位</th>
+							<th>日期</th>
+							<th>出发地-目的地</th>
+							<th>金额</th>
+						</thead>
+						<tbody id="tbody">
+							<tr v-for="(item, index) in pdfData.list" :key="index">
+								<td>{{index + 1}}</td>
+								<td>{{name}}</td>
+								<td>{{post}}</td>
+								<td>{{dateFormat(item.date)}}</td>
+								<td>{{item.start | addressFormat}} - {{item.end | addressFormat}}</td>
+								<td>{{item.price}}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<div class="control flex">
+					<div class="flex">
+						<div class="checkbox">
+							<label>
+								<input type="checkbox" v-model="isAppend">是否追加数据
+							</label>
+						</div>
+						<button type="button" class="btn btn-primary mrg15L" id="copyBtn" :data-clipboard-text="copyTxt">点我复制</button>
+						<button type="button" class="btn btn-default mrg15L">清空</button>
+					</div>
+				</div>
+
+				<h5 class="help">
+					操作说明:<br>
+					第一步：拖动 滴滴出行行程报销单.pdf 到浏览器窗口，即这里！<br>
+					第二步：录入 姓名、岗位 信息<br>
+					第三步：点击按钮复制数据，然后直接粘贴到excel完事~ <br>
+					就是这么朴实无华且枯燥~~~<br>
+					<br>
+				</h5>
+				<!-- 				<h5 class="">日志信息</h5>
+				<textarea class="log form-control">{{log}}</textarea> -->
+			</div>
+		</div>
+		<script src="js/vue.min.js"></script>
+		<script src="js/clipboard.min.js"></script>
+		<script src="js/pdf/pdf.js"></script>
+		<script>
+			var app = new Vue({
+				el: '#app',
+				data: {
+					name: "",
+					post: "",
+					curYear: "",
+					pdfData: {
+						tip1: "",
+						tip2: "",
+						tip3: "",
+						tip4: "",
+						list: [],
+					},
+					copyTxt: "",
+					log: "",
+					isDragging: false,
+					isAppend: true,
+				},
+				mounted() {
+					new Clipboard('#copyBtn');
+					this.initDrop();
+				},
+				filters: {
+					addressFormat: function(value) {
+						if (!value) return ''
+						if (value.indexOf("|") === -1) return value;
+						return value.split("|")[1];
+					},
+				},
+				computed: {
+					dateFormat() {
+						return function(val) {
+							var date = val.split(" ")[0];
+							console.log("this.curYear", this.curYear)
+							return this.curYear + "-" + date;
+						}
+					},
+				},
+				methods: {
+					initDrop() {
+						var oDropBox = document.querySelector('body');
+						var that = this;
+						oDropBox.addEventListener('dragover', function(e) {
+							e.stopPropagation();
+							e.preventDefault();
+							that.isDragging = true;
+						}, false);
+						oDropBox.addEventListener('drop', this.handleDrop, false);
+					},
+					handleDrop(e) {
+						e.stopPropagation();
+						e.preventDefault();
+						this.isDragging = false;
+						var that = this;
+						var fileList = e.dataTransfer.files; //获取拖拽文件
+						console.log(fileList);
+						var url = fileList[0].name;
+
+						this.getPdfByFile(fileList[0], function(pdfAsArray) {
+							that.readPDF(pdfAsArray);
+						})
+					},
+					getPdfByFile(file, callback) {
+						var that = this;
+						var reader = new FileReader();
+						reader.readAsDataURL(file); // 转换为base64
+						reader.onload = function(e) {
+							var pdfAsDataUri = e.target.result;
+							var pdfAsArray = that.convertDataURIToBinary(pdfAsDataUri);
+							callback && callback(pdfAsArray);
+						}
+					},
+					//编码转换
+					convertDataURIToBinary(dataURI) {
+						var BASE64_MARKER = ';base64,'; //声明文件流编码格式
+						//[RFC2045]中有规定：Base64一行不能超过76字符，超过则添加回车换行符。因此需要把base64字段中的换行符，回车符给去掉。
+						var base64Index = dataURI.indexOf(BASE64_MARKER) + BASE64_MARKER.length;
+						var newUrl = dataURI.substring(base64Index).replace(/[\n\r]/g, '');
+						var raw = window.atob(newUrl); //这个方法在ie内核下无法正常解析。
+						var rawLength = raw.length;
+						//转换成pdf.js能直接解析的Uint8Array类型
+						var array = new Uint8Array(new ArrayBuffer(rawLength));
+						for (i = 0; i < rawLength; i++) {
+							array[i] = raw.charCodeAt(i) & 0xff;
+						}
+						return array;
+					},
+					readPDF(url) {
+						var that = this;
+						this.pdfToText(url || "滴滴出行行程报销单(1).pdf").then(function(result) {
+							console.log("PDF done!", result.split("\t"));
+
+							var list = result.split("\t");
+							that.parsePdfTxt(list);
+						})
+					},
+					findCommentTxtIndex(list) {
+						return list.indexOf("备注");
+					},
+					getForStep(list) {
+						return list.indexOf("滴滴快") > -1 || list.indexOf("礼橙专") > -1 ? 11 : 10;
+					},
+					parsePdfTxt(list) {
+						var flagIndex = this.findCommentTxtIndex(list);
+						var step = this.getForStep(list);
+
+						if (!this.isAppend) {
+							this.pdfData.list = [];
+						}
+
+						console.log("step", step)
+						console.log("findCommentTxt() ", this.findCommentTxtIndex(list))
+						if (list.length > 2) {
+							var title = list[1];
+							if (title === "滴滴出行—行程单") {
+								for (let i = 0; i < list.length; i++) {
+									var txt = list[i];
+									if (txt.indexOf("申请日期") > -1) {
+										this.pdfData.tip1 = txt;
+									} else if (txt.indexOf("行程起止") > -1) {
+										this.pdfData.tip2 = txt;
+
+										if (!this.curYear) {
+											//按月计算，不会有跨月或跨年的情况出现
+											var reg = /(\d{4}-\d{2}-\d{2})/;
+											var startDate = txt.match(/(\d{4}-\d{2}-\d{2})/)[1];
+											var day = new Date(startDate);
+											var year = day.getFullYear();
+											console.log(year, startDate)
+											this.curYear = year;
+										}
+										// 行程起止日期:2020-11-02 至 2020-11-27
+									} else if (txt.indexOf("行程人手机号") > -1) {
+										this.pdfData.tip3 = txt;
+									} else if (txt.indexOf("笔行程") > -1) {
+										this.pdfData.tip4 = txt;
+									}
+								}
+								for (let i = flagIndex + 1; i < list.length;) {
+									if (i + 10 > list.length) {
+										break;
+									}
+									var index = list[i + 0];
+									var type = list[i + 1];
+									var offset = 0;
+									if (step === 11) {
+										offset = 1;
+										type = list[i + 1] + list[i + 2];
+									}
+									var date = list[i + 2 + offset];
+									var city = list[i + 3 + offset];
+									var start = list[i + 4 + offset];
+									var end = list[i + 5 + offset];
+									var mileage = list[i + 6 + offset];
+									var price = list[i + 7 + offset];
+
+									var item = {
+										index,
+										type,
+										date,
+										city,
+										start,
+										end,
+										mileage,
+										price,
+									}
+									this.pdfData.list.push(item);
+									i += step;
+								}
+								console.log(this.pdfData)
+								this.updateCopyTxt();
+							} else {
+								alert("非滴滴出行—行程单")
+							}
+						} else {
+							alert("数据错误！ 非滴滴出行—行程单")
+						}
+					},
+					updateCopyTxt() {
+						// copyTxt
+						var str = "";
+						var that = this;
+						this.pdfData.list.forEach(function(item, index) {
+							str +=
+								`${index+1}\t${that.name}\t${that.post}\t${that.dateFormat(item.date)}\t${item.start.split("-")[0]} - ${item.end.split("-")[0]}\t${item.price}\r\n`;
+						});
+
+						this.copyTxt = str;
+					},
+					pdfToText(data) {
+						/**
+						 * Extract text from PDFs with PDF.js
+						 * Uses the demo pdf.js from https://mozilla.github.io/pdf.js/getting_started/
+						 */
+						pdfjsLib.GlobalWorkerOptions.workerSrc = './js/pdf/pdf.worker.js';
+						pdfjsLib.cMapUrl = './js/cmaps/';
+						pdfjsLib.cMapPacked = true;
+						return pdfjsLib.getDocument(data).promise.then(function(pdf) {
+							var pages = [];
+							for (var i = 0; i < pdf.numPages; i++) {
+								pages.push(i);
+							}
+							return Promise.all(pages.map(function(pageNumber) {
+								return pdf.getPage(pageNumber + 1).then(function(page) {
+									return page.getTextContent().then(function(textContent) {
+										return textContent.items.map(function(item) {
+											return item.str;
+										}).join('\t');
+									});
+								});
+							})).then(function(pages) {
+								return pages.join("");
+							});
+						});
+					}
+				}
+			})
+		</script>
+	</body>
+</html>
