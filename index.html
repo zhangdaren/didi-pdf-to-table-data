@@ -35,7 +35,7 @@
 						{{pdfData.tip1}}　　　　　{{pdfData.tip2}}
 					</div>
 					<div class="flex">
-						{{pdfData.tip3}}　　{{pdfData.tip4}}
+						{{pdfData.tip3}}　　<b>{{pdfData.tip4}}</b>
 					</div>
 					<table cellpadding="0" cellspacing="0" class="table table-striped">
 						<thead>
@@ -76,7 +76,7 @@
 					第一步：拖动 滴滴出行行程报销单.pdf 到浏览器窗口，即这里！<br>
 					第二步：录入 姓名、岗位 信息<br>
 					第三步：点击按钮复制数据，然后直接粘贴到excel完事~ <br>
-					就是这么朴实无华且枯燥~~~<br>
+					就是这么朴实无华~~~且枯燥~~~<br>
 					<br>
 				</h5>
 				<!-- 				<h5 class="">日志信息</h5>
@@ -87,6 +87,15 @@
 		<script src="js/clipboard.min.js"></script>
 		<script src="js/pdf/pdf.js"></script>
 		<script>
+			/**
+			 * todo:
+			 * 1.追加时数据去重  ok
+			 * 2.欢迎页面造好一点
+			 * 
+			 * 发票打印助手
+			 * 上传pdf，然后生成合适小图，一并打印
+			 * 
+			 */
 			var app = new Vue({
 				el: '#app',
 				data: {
@@ -193,12 +202,9 @@
 						var flagIndex = this.findCommentTxtIndex(list);
 						var step = this.getForStep(list);
 
-						if (!this.isAppend) {
-							this.pdfData.list = [];
-						}
-
 						console.log("step", step)
 						console.log("findCommentTxt() ", this.findCommentTxtIndex(list))
+						var tmpArr = [];
 						if (list.length > 2) {
 							var title = list[1];
 							if (title === "滴滴出行—行程单") {
@@ -253,9 +259,28 @@
 										mileage,
 										price,
 									}
-									this.pdfData.list.push(item);
+
+									tmpArr.push(item);
 									i += step;
 								}
+
+								if (this.isAppend) {
+									this.pdfData.list = [...this.pdfData.list, ...tmpArr];
+								} else {
+									this.pdfData.list = tmpArr;
+								}
+								
+								//数组去重
+								var obj = {};
+								var arr = this.pdfData.list.reduce(function(item, next) {
+									//构造超长唯一key
+									var key = "key=" + next.date + next.price + next.mileage + next.end;
+									obj[key] ? '' : obj[key] = true && item.push(next);
+									return item;
+								}, []);
+								this.pdfData.list = arr;
+								
+
 								console.log(this.pdfData)
 								this.updateCopyTxt();
 							} else {
