@@ -1,76 +1,88 @@
 * {
-		margin: 0;
-	}
+	margin: 0;
+}
 
-	html,
-	body {
-		height: 100%;
-	}
+html,
+body {
+	height: 100%;
+}
 
-	.whole {
-		max-width: 900px;
-		margin: 0 auto;
-		padding-top: 50px;
-	}
+.whole {
+	max-width: 900px;
+	margin: 0 auto;
+	padding-top: 50px;
+}
 
-	.left {
-		float: left;
-	}
+.left {
+	float: left;
+}
 
-	.right {
-		float: right;
-	}
+.right {
+	float: right;
+}
 
-	.flex {
-		display: flex;
-	}
+.flex {
+	display: flex;
+}
 
-	.uploader {
-		position: fixed;
-		left: 0;
-		top: 0;
-		width: 100%;
-		height: 100%;
-		background: #ffd90021;
-		border: 5px dashed #999;
-		z-index: 11;
-		align-items: center;
-		justify-content: center;
-		flex-direction: column;
-		color: #666;
-		font-size: 24px;
-	}
+.uploader {
+	position: fixed;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	background: #ffd90021;
+	border: 5px dashed #999;
+	z-index: 11;
+	align-items: center;
+	justify-content: center;
+	flex-direction: column;
+	color: #666;
+	font-size: 24px;
+}
 
-	.input-file {
-		position: absolute;
-		left: 0;
-		top: 0;
-		width: 100%;
-		height: 100%;
-		outline: none;
-		opacity: 0;
-	}
+.input-file {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	outline: none;
+	opacity: 0;
+}
 
-	.control {
-		justify-content: flex-end;
+.control {
+	justify-content: flex-end;
 
-	}
+}
 
-	.mrg15L {
-		margin-left: 15px;
-	}
+.mrg15L {
+	margin-left: 15px;
+}
 
-	.log {
-		margin-top: 30px;
-		width: 100%;
-		height: 250px !important;
-		resize: none;
-	}
+.log {
+	margin-top: 30px;
+	width: 100%;
+	height: 250px !important;
+	resize: none;
+}
 
-	.help {
-		line-height: 1.5;
-	}
+.help {
+	line-height: 1.5;
+}
 
-	.title {
-		margin-bottom: 30px;
-	}
+.title {
+	margin-bottom: 30px;
+}
+
+.copyright {
+	text-align: center;
+	width: 100%;
+	position: fixed;
+	bottom: 20px;
+	left: 0;
+}
+.inYesterday{
+	background-color: yellow;
+	display:inline-block;
+}

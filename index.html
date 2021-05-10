@@ -19,13 +19,15 @@
 					<div class="form-group">
 						<label for="firstname" class="col-sm-2 control-label">姓名</label>
 						<div class="col-sm-10">
-							<input type="text" class="form-control" placeholder="请输入姓名" v-model="name" @change="updateCopyTxt">
+							<input type="text" class="form-control" placeholder="请输入姓名" v-model="name"
+								@change="updateCopyTxt">
 						</div>
 					</div>
 					<div class="form-group">
 						<label for="lastname" class="col-sm-2 control-label">岗位</label>
 						<div class="col-sm-10">
-							<input type="text" class="form-control" placeholder="请输入岗位" v-model="post" @change="updateCopyTxt">
+							<input type="text" class="form-control" placeholder="请输入岗位" v-model="post"
+								@change="updateCopyTxt">
 						</div>
 					</div>
 				</form>
@@ -51,7 +53,11 @@
 								<td>{{index + 1}}</td>
 								<td>{{name}}</td>
 								<td>{{post}}</td>
-								<td>{{dateFormat(item.date)}}</td>
+								<td>
+									<div :class="{inYesterday: item.isInYesterday}" :title="item.realTime">
+										{{dateFormat(item)}}<span v-if="item.isInYesterday"> (加班到{{item.hour}}点)</span>
+									</div>
+								</td>
 								<td>{{item.start | addressFormat}} - {{item.end | addressFormat}}</td>
 								<td>{{item.price}}</td>
 							</tr>
@@ -63,10 +69,17 @@
 					<div class="flex">
 						<div class="checkbox">
 							<label>
+								<input type="checkbox" v-model="isInYesterday">凌晨算昨天
+							</label>
+						</div>
+						<div class="checkbox mrg15L" style="margin-top: 10px;">
+							<label>
 								<input type="checkbox" v-model="isAppend">是否追加数据
 							</label>
 						</div>
-						<button type="button" class="btn btn-primary mrg15L" id="copyBtn" :data-clipboard-text="copyTxt">点我复制</button>
+						<button type="button" class="btn btn-primary mrg15L" id="copyBtn"
+							:data-clipboard-text="copyTxt">点我复制</button>
+						<button type="button" class="btn btn-default mrg15L" @click="handleExcel">导出(鸡肋)</button>
 						<button type="button" class="btn btn-default mrg15L">清空</button>
 					</div>
 				</div>
@@ -82,10 +95,15 @@
 				<!-- 				<h5 class="">日志信息</h5>
 				<textarea class="log form-control">{{log}}</textarea> -->
 			</div>
+
+			<div class="copyright"><a href="https://github.com/zhangdaren/didi-pdf-to-table-data">Code by
+					375890534@qq.com</a></div>
 		</div>
 		<script src="js/vue.min.js"></script>
 		<script src="js/clipboard.min.js"></script>
 		<script src="js/pdf/pdf.js"></script>
+		<script src="js/xlsx.core.min.js"></script>
+		<script src="js/exportExcel.js"></script>
 		<script>
 			/**
 			 * todo:
@@ -102,6 +120,7 @@
 					name: "",
 					post: "",
 					curYear: "",
+					curMonth: "",
 					pdfData: {
 						tip1: "",
 						tip2: "",
@@ -113,6 +132,7 @@
 					log: "",
 					isDragging: false,
 					isAppend: true,
+					isInYesterday: true,
 				},
 				mounted() {
 					new Clipboard('#copyBtn');
@@ -125,16 +145,38 @@
 						return value.split("|")[1];
 					},
 				},
-				computed: {
-					dateFormat() {
-						return function(val) {
-							var date = val.split(" ")[0];
-							console.log("this.curYear", this.curYear)
-							return this.curYear + "-" + date;
-						}
-					},
-				},
 				methods: {
+					dateFormat(item) {
+						var val = item.date;
+						var arr = val.split(" ");
+						var date = val.split(" ")[0];
+
+						var time = new Date(this.curYear + " " + arr[0] + " " + arr[1]);
+
+						var hour = time.getHours();
+						if (this.isInYesterday && hour < 9) {
+							time = time.setDate(time.getDate() - 1);
+							time = new Date(time);
+							var y = time.getFullYear();
+							var m = this.prefix(time.getMonth() + 1, 2);
+							var d = this.prefix(time.getDate(), 2);
+							date = y + "-" + m + "-" + d;
+							this.$set(item, "isInYesterday", true);
+						} else {
+							date = this.curYear + "-" + date;
+							this.$set(item, "isInYesterday", false);
+						}
+
+						this.$set(item, "realTime", date + " " + item.date);
+						this.$set(item, "hour", hour);
+
+
+						console.log("this.curYear", this.curYear)
+						return date;
+					},
+					prefix(val, num) {
+						return (new Array(num).join('0') + val).slice(-num);
+					},
 					initDrop() {
 						var oDropBox = document.querySelector('body');
 						var that = this;
@@ -235,6 +277,10 @@
 									if (i + 10 > list.length) {
 										break;
 									}
+									if (list[i].indexOf("页码：") > -1) {
+										i += 14;
+										continue;
+									}
 									var index = list[i + 0];
 									var type = list[i + 1];
 									var offset = 0;
@@ -269,7 +315,11 @@
 								} else {
 									this.pdfData.list = tmpArr;
 								}
-								
+
+								//当前为哪月，目前为单月模式，因些仅取最尾一天的月份
+								this.curMonth = tmpArr[0].date.substr(0, 2);
+								console.log(this.curMonth + "月的报销")
+
 								//数组去重
 								var obj = {};
 								var arr = this.pdfData.list.reduce(function(item, next) {
@@ -279,7 +329,7 @@
 									return item;
 								}, []);
 								this.pdfData.list = arr;
-								
+
 
 								console.log(this.pdfData)
 								this.updateCopyTxt();
@@ -296,7 +346,7 @@
 						var that = this;
 						this.pdfData.list.forEach(function(item, index) {
 							str +=
-								`${index+1}\t${that.name}\t${that.post}\t${that.dateFormat(item.date)}\t${item.start.split("-")[0]} - ${item.end.split("-")[0]}\t${item.price}\r\n`;
+								`${index+1}\t${that.name}\t${that.post}\t${that.dateFormat(item)}\t${item.start.split("-")[0]} - ${item.end.split("-")[0]}\t${item.price}\r\n`;
 						});
 
 						this.copyTxt = str;
@@ -326,6 +376,70 @@
 								return pages.join("");
 							});
 						});
+					},
+					handleExcel() {
+						var that = this;
+						const headers = [{
+								title: "序号",
+								dataIndex: 'sort',
+								width: 80
+							},
+							{
+								title: "姓名",
+								dataIndex: 'name',
+								width: 100
+							},
+							{
+								title: "岗位",
+								dataIndex: 'post',
+								width: 100
+							},
+							{
+								title: "日期",
+								dataIndex: 'date',
+								width: 100
+							},
+							{
+								title: "出发地-目的地",
+								dataIndex: 'trip',
+								width: 220
+							},
+							{
+								title: "金额",
+								dataIndex: 'price',
+								width: 80
+							},
+							{
+								title: "备注",
+								dataIndex: 'comment',
+								width: 120
+							},
+						]
+						const dataSource = []
+
+						that.pdfData.list.forEach(function(item, index) {
+							dataSource.push({
+								sort: index + 1,
+								name: that.name,
+								post: that.post,
+								date: that.dateFormat(item),
+								trip: item.start.split("-")[0] + "-" + item.end.split("-")[0],
+								price: item.price,
+								comment: "",
+							})
+						});
+
+						const options = [{
+							title: `技术部${this.curMonth}月份加班打车费用明细表`
+						}]
+						const type = {
+							bookType: 'xlsx',
+							bookSST: true,
+							type: 'binary',
+							cellStyles: true
+						};
+
+						exportExcel(headers, dataSource, options, type, "打车费用报销--" + this.name);
 					}
 				}
 			})
